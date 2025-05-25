@@ -66,3 +66,72 @@ train_generator = train_datagen.flow_from_directory(
     class_mode='binary',
     shuffle=True # Binary classification: dent vs crack
 )
+
+valid_generator = valid_datagen.flow_from_directory(
+    directory=valid_dir,
+    target_size=(img_rows, img_cols),
+    batch_size=batch_size,
+    seed=seed_value,
+    class_mode='binary',
+    shuffle=False
+)
+
+test_generator = test_datagen.flow_from_directory(
+    directory=test_dir,
+    target_size=(img_rows, img_cols),
+    batch_size=batch_size,
+    seed=seed_value,
+    class_mode='binary',
+    shuffle=False
+)
+
+base_model = VGG16(
+    weights='imagenet',
+    include_top=False,
+    input_shape=(img_rows, img_cols, 3)
+)
+
+output = base_model.layers[-1].output
+output = keras.layers.Flatten()(output)
+base_model = Model(base_model.input, output)
+
+for layer in base_model.layers:
+    layer.trainable = False
+
+model = Sequential()
+model.add(base_model)
+model.add(Dense(512, activation='relu'))
+model.add(Dropout(0.3))
+model.add(Dense(512, activation='relu'))
+model.add(Dropout(0.3))
+model.add(Dense(1, activation='sigmoid'))
+
+
+
+model.compile(
+    optimizer=Adam(learning_rate=0.0001),
+    loss='binary_crossentropy',
+    metrics=['accuracy']
+)
+
+
+#training
+history = model.fit(
+    train_generator,        
+    epochs=n_epochs,        
+    validation_data=valid_generator 
+)
+
+train_history = model.history.history
+
+plt.title("Training Loss")
+plt.ylabel("Loss")
+plt.xlabel('Epoch')
+plt.plot(train_history['loss'])
+plt.show()
+
+plt.title("Validation Loss")
+plt.ylabel("Loss")
+plt.xlabel('Epoch')
+plt.plot(train_history['val_loss'])
+plt.show()
